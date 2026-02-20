@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5+ Wine & Food</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #F9F7F4;
+  --surface: #FFFFFF;
+  --ink: #1A1A18;
+  --ink-light: #6B6B65;
+  --ink-faint: #C8C8C0;
+  --accent: #8B1A1A;
+  --accent-soft: #F3EEEA;
+  --gold: #C4952A;
+  --border: #E8E4DE;
+  --radius: 3px;
+  --nav-h: 64px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  font-family: var(--font-body);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── NAV ── */
+nav {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: var(--nav-h);
+  position: sticky; top: 0; z-index: 500; flex-shrink: 0;
+}
+.logo { font-family: var(--font-display); font-size: 22px; color: var(--accent); letter-spacing: -0.5px; cursor: pointer; user-select: none; }
+.logo span { color: var(--gold); }
+.nav-links { display: flex; gap: 8px; list-style: none; }
+.nav-links li a {
+  font-size: 14px; letter-spacing: 0.02em; color: var(--ink-light);
+  text-decoration: none; padding: 8px 16px; border-radius: var(--radius);
+  transition: all 0.15s; cursor: pointer;
+}
+.nav-links li a:hover, .nav-links li a.active { background: var(--accent-soft); color: var(--accent); }
+
+/* ── PAGE SYSTEM ── */
+/* Non-regions pages scroll normally */
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.25s ease; }
+
+/* Regions page fills viewport height */
+#page-regions { display: none; flex-direction: column; }
+#page-regions.active { display: flex; height: calc(100vh - var(--nav-h)); overflow: hidden; }
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@keyframes aFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+.anim { animation: aFadeIn 0.2s ease; }
+
+/* ── SHARED LAYOUT ── */
+.section-sm { max-width: 1080px; margin: 0 auto; padding: 40px; }
+.eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+h1.display { font-family: var(--font-display); font-size: clamp(36px, 5vw, 56px); font-weight: 400; line-height: 1.1; color: var(--ink); letter-spacing: -1px; }
+h1.display em { font-style: italic; color: var(--accent); }
+h2.section-title { font-family: var(--font-display); font-size: 28px; font-weight: 400; color: var(--ink); margin-bottom: 8px; }
+.section-sub { font-size: 15px; color: var(--ink-light); font-weight: 300; margin-bottom: 36px; }
+
+/* ── SEARCH BAR ── */
+.search-wrap { display: flex; margin: 40px 0; max-width: 600px; border: 1.5px solid var(--ink); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.search-wrap input { flex: 1; padding: 16px 20px; font-family: var(--font-body); font-size: 15px; border: none; outline: none; background: transparent; color: var(--ink); }
+.search-wrap input::placeholder { color: var(--ink-faint); }
+.search-wrap button { padding: 16px 28px; background: var(--accent); color: white; border: none; font-family: var(--font-body); font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+.search-wrap button:hover { background: #701515; }
+
+/* ── CARDS ── */
+.card-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+.card-grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 24px; cursor: pointer; transition: all 0.2s; }
+.card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(139,26,26,.08); transform: translateY(-2px); }
+.card-score { font-family: var(--font-display); font-size: 42px; color: var(--accent); line-height: 1; margin-bottom: 4px; }
+.card-score-label { font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+.card-name { font-family: var(--font-display); font-size: 17px; margin-bottom: 4px; }
+.card-sub { font-size: 13px; color: var(--ink-light); font-weight: 300; margin-bottom: 12px; }
+.card-tag { display: inline-block; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 2px; }
+.divider { border: none; border-top: 1px solid var(--border); }
+
+/* ── HOME ── */
+.hero { background: var(--surface); border-bottom: 1px solid var(--border); }
+.hero-inner { max-width: 1080px; margin: 0 auto; padding: 72px 40px 64px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+.hero-stat-block { display: flex; gap: 40px; margin-top: 40px; }
+.hero-stat-num { font-family: var(--font-display); font-size: 36px; color: var(--accent); }
+.hero-stat-label { font-size: 12px; color: var(--ink-light); letter-spacing: .05em; text-transform: uppercase; font-weight: 500; margin-top: 2px; }
+.hero-visual { display: flex; justify-content: center; align-items: center; height: 280px; position: relative; }
+
+/* ── FIND WINE ── */
+.scan-box { background: var(--surface); border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 64px 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.scan-box:hover { border-color: var(--accent); background: var(--accent-soft); }
+.scan-icon { width: 56px; height: 56px; margin: 0 auto 16px; border: 1.5px solid var(--ink-faint); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.scan-box h3 { font-family: var(--font-display); font-size: 22px; font-weight: 400; margin-bottom: 8px; }
+.scan-box p { font-size: 14px; color: var(--ink-light); font-weight: 300; }
+.result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; max-width: 560px; margin: 0 auto; display: none; }
+.result-card.show { display: block; animation: fadeIn .3s ease; }
+.result-score-big { font-family: var(--font-display); font-size: 64px; color: var(--accent); line-height: 1; }
+.result-score-suffix { font-family: var(--font-display); font-size: 28px; color: var(--ink-faint); }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 32px; }
+.filter-pill { padding: 8px 16px; border: 1px solid var(--border); border-radius: 99px; font-size: 13px; cursor: pointer; background: var(--surface); color: var(--ink-light); transition: all .15s; font-family: var(--font-body); }
+.filter-pill:hover, .filter-pill.active { background: var(--accent); border-color: var(--accent); color: white; }
+.wine-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; cursor: pointer; transition: all .2s; }
+.wine-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(139,26,26,.08); }
+.wine-score { font-family: var(--font-display); font-size: 36px; color: var(--accent); line-height: 1; }
+.wine-score-label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; font-weight: 500; }
+.wine-name { font-family: var(--font-display); font-size: 16px; margin-bottom: 2px; }
+.wine-region { font-size: 13px; color: var(--ink-light); font-weight: 300; margin-bottom: 10px; }
+.wine-verdict { font-size: 13px; color: var(--ink); font-style: italic; line-height: 1.5; font-family: var(--font-display); }
+.wine-meta { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-light); }
+
+/* ── FOOD PAIRING ── */
+.pairing-tabs { display: flex; border: 1.5px solid var(--ink); border-radius: var(--radius); overflow: hidden; width: fit-content; margin-bottom: 36px; }
+.pairing-tab { padding: 12px 28px; font-family: var(--font-body); font-size: 14px; cursor: pointer; background: transparent; border: none; color: var(--ink-light); transition: all .15s; }
+.pairing-tab.active { background: var(--ink); color: white; }
+.pairing-result { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.pair-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: var(--radius); cursor: pointer; transition: all .2s; }
+.pair-card:hover { border-color: var(--accent); }
+.pair-icon { font-size: 28px; margin-bottom: 10px; }
+.pair-name { font-family: var(--font-display); font-size: 16px; margin-bottom: 4px; }
+.pair-why { font-size: 13px; color: var(--ink-light); font-weight: 300; }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn .2s ease; }
+
+/* ── GRAPES ── */
+.grape-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; cursor: pointer; transition: all .2s; }
+.grape-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(139,26,26,.08); }
+.grape-color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+.grape-type { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-light); margin-bottom: 10px; }
+.grape-name { font-family: var(--font-display); font-size: 22px; margin-bottom: 6px; }
+.grape-origin { font-size: 13px; color: var(--ink-light); font-weight: 300; margin-bottom: 14px; }
+.grape-profile { display: flex; flex-direction: column; gap: 6px; }
+.profile-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-light); }
+.profile-bar-bg { flex: 1; height: 3px; background: var(--border); border-radius: 2px; }
+.profile-bar { height: 3px; background: var(--accent); border-radius: 2px; }
+
+/* ── OTHER ── */
+.other-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+.other-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; cursor: pointer; transition: all .2s; }
+.other-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(139,26,26,.06); }
+.other-icon { font-size: 32px; margin-bottom: 16px; }
+.other-title { font-family: var(--font-display); font-size: 20px; margin-bottom: 6px; }
+.other-desc { font-size: 14px; color: var(--ink-light); font-weight: 300; line-height: 1.6; }
+
+/* ── FOOTER ── */
+footer { margin-top: auto; border-top: 1px solid var(--border); padding: 24px 40px; display: flex; justify-content: space-between; align-items: center; background: var(--surface); flex-shrink: 0; }
+footer .logo-sm { font-family: var(--font-display); font-size: 16px; color: var(--accent); }
+footer p { font-size: 12px; color: var(--ink-faint); }
+
+/* ── SCAN ANIM ── */
+@keyframes scan-line { 0%{top:0} 50%{top:calc(100% - 2px)} 100%{top:0} }
+.scan-animation { position: relative; width: 200px; height: 200px; border: 2px solid var(--accent); border-radius: 4px; margin: 24px auto; overflow: hidden; }
+.scan-line { position: absolute; left:0; right:0; height:2px; background:var(--accent); animation: scan-line 1.5s ease-in-out infinite; opacity:.7; }
+
+/* ══════════════════════════════════════════════
+   REGIONS MAP PAGE
+══════════════════════════════════════════════ */
+.regions-main { flex: 1; display: flex; overflow: hidden; }
+
+/* Left panel */
+.map-left { width: 300px; min-width: 300px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 10; }
+.map-panel-header { padding: 20px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.map-panel-title { font-family: var(--font-display); font-size: 19px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; padding: 10px 20px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 11px; min-height: 38px; flex-shrink: 0; }
+.bc-item { color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.bc-sep { color: var(--ink-faint); }
+.bc-current { color: var(--ink-light); }
+.map-panel-search { padding: 10px 16px; border: none; border-bottom: 1px solid var(--border); font-family: var(--font-body); font-size: 13px; width: 100%; outline: none; background: var(--bg); color: var(--ink); flex-shrink: 0; }
+.map-panel-search::placeholder { color: var(--ink-faint); }
+.map-list-scroll { flex: 1; overflow-y: auto; }
+.map-list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+.map-list-item:hover { background: var(--accent-soft); }
+.map-list-item.active { background: var(--accent-soft); border-left: 3px solid var(--accent); padding-left: 17px; }
+.map-list-name { font-size: 14px; color: var(--ink); margin-bottom: 1px; }
+.map-list-sub { font-size: 11px; color: var(--ink-light); font-weight: 300; }
+.map-list-arrow { color: var(--ink-faint); font-size: 14px; margin-left: 6px; flex-shrink: 0; }
+
+/* Right: map + detail */
+.map-right { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+/* Continent overlay */
+#continent-overlay {
+  position: absolute; inset: 0; background: var(--bg); z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+}
+.continent-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; padding: 32px; max-width: 600px; width: 100%; }
+.continent-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 20px; cursor: pointer; transition: all .2s; text-align: center; }
+.continent-card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(139,26,26,.1); transform: translateY(-2px); }
+.continent-card-icon { font-size: 36px; margin-bottom: 10px; }
+.continent-card-name { font-family: var(--font-display); font-size: 20px; margin-bottom: 3px; }
+.continent-card-sub { font-size: 12px; color: var(--ink-light); font-weight: 300; }
+
+/* Map itself */
+#map { flex: 1; z-index: 1; min-height: 0; }
+
+/* Detail panel */
+#map-detail { background: var(--surface); border-top: 2px solid var(--accent); max-height: 0; overflow: hidden; transition: max-height .35s ease; flex-shrink: 0; }
+#map-detail.open { max-height: 220px; }
+.detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 28px 0; }
+.detail-name { font-family: var(--font-display); font-size: 20px; }
+.detail-meta { font-size: 12px; color: var(--ink-light); font-weight: 300; margin-top: 2px; }
+.detail-close-btn { background: none; border: 1px solid var(--border); padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-family: var(--font-body); font-size: 11px; color: var(--ink-light); transition: all .15s; }
+.detail-close-btn:hover { border-color: var(--accent); color: var(--accent); }
+.detail-inner { padding: 16px 28px 20px; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px; }
+.col-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-light); margin-bottom: 8px; }
+.detail-desc-text { font-size: 12px; color: var(--ink); line-height: 1.65; font-weight: 300; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.dtag { font-size: 11px; background: #FFF8EC; color: var(--gold); padding: 3px 8px; border-radius: 2px; }
+.producer-list { display: flex; flex-direction: column; gap: 4px; }
+.producer-item { font-size: 12px; color: var(--ink-light); font-weight: 300; }
+
+/* Leaflet overrides */
+.leaflet-container { background: #C8DAE8 !important; font-family: var(--font-body) !important; }
+.wine-dot { background: var(--accent); border: 2px solid white; border-radius: 50%; width: 12px; height: 12px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.3); transition: transform .15s; }
+.wine-dot:hover { transform: scale(1.5); }
+.wine-dot.gold { background: var(--gold); width: 14px; height: 14px; }
+.leaflet-popup-content-wrapper { border-radius: var(--radius) !important; box-shadow: 0 4px 20px rgba(0,0,0,.15) !important; font-family: var(--font-body) !important; padding: 0 !important; }
+.leaflet-popup-content { margin: 0 !important; }
+.map-popup { padding: 12px 16px; min-width: 160px; }
+.map-popup-name { font-family: var(--font-display); font-size: 15px; margin-bottom: 3px; }
+.map-popup-sub { font-size: 11px; color: var(--ink-light); font-weight: 300; margin-bottom: 8px; }
+.map-popup-btn { display: block; width: 100%; padding: 7px; text-align: center; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-family: var(--font-body); font-size: 11px; font-weight: 500; cursor: pointer; }
+.map-popup-btn:hover { background: #701515; }
+.leaflet-control-zoom { border: 1px solid var(--border) !important; box-shadow: none !important; }
+.leaflet-control-zoom a { font-family: var(--font-body) !important; color: var(--ink) !important; background: var(--surface) !important; border-color: var(--border) !important; }
+.leaflet-control-zoom a:hover { background: var(--accent-soft) !important; color: var(--accent) !important; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo" onclick="showPage('home')">5<span>+</span> Wine & Food</div>
+  <ul class="nav-links">
+    <li><a onclick="showPage('home')" id="nav-home" class="active">Home</a></li>
+    <li><a onclick="showPage('findwine')" id="nav-findwine">Find Wine</a></li>
+    <li><a onclick="showPage('findfood')" id="nav-findfood">Find Food</a></li>
+    <li><a onclick="showPage('regions')" id="nav-regions">Regions</a></li>
+    <li><a onclick="showPage('grapes')" id="nav-grapes">Grapes</a></li>
+    <li><a onclick="showPage('other')" id="nav-other">Other</a></li>
+  </ul>
+</nav>
+
+<!-- ══ HOME ══════════════════════════════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="eyebrow">Your wine companion</div>
+        <h1 class="display">Discover wine<br>you'll <em>love.</em></h1>
+        <div class="search-wrap" style="max-width:500px;margin-top:32px;">
+          <input type="text" placeholder="Search a wine, region, or grape…" id="home-search">
+          <button onclick="doHomeSearch()">Search</button>
+        </div>
+        <div class="hero-stat-block">
+          <div class="hero-stat"><div class="hero-stat-num">42k+</div><div class="hero-stat-label">Wines Rated</div></div>
+          <div class="hero-stat"><div class="hero-stat-num">200+</div><div class="hero-stat-label">Regions</div></div>
+          <div class="hero-stat"><div class="hero-stat-num">300+</div><div class="hero-stat-label">Food Pairings</div></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <svg style="opacity:.1;position:absolute;right:0" width="220" height="280" viewBox="0 0 220 280" fill="none">
+          <ellipse cx="110" cy="80" rx="80" ry="70" stroke="#8B1A1A" stroke-width="3"/>
+          <rect x="104" y="150" width="12" height="90" fill="#8B1A1A"/>
+          <ellipse cx="110" cy="248" rx="40" ry="8" stroke="#8B1A1A" stroke-width="3" fill="none"/>
+          <path d="M50 120 Q110 160 170 120" stroke="#8B1A1A" stroke-width="3" fill="none"/>
+        </svg>
+        <div style="text-align:center;">
+          <div style="font-size:13px;color:var(--ink-light);margin-bottom:16px;font-weight:300;">Try scanning a bottle</div>
+          <button onclick="showPage('findwine');setTimeout(()=>showScanDemo(),200)" style="padding:14px 28px;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--radius);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .15s;color:var(--ink);" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background='var(--surface)'">▶ Scan a Bottle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sm">
+    <div class="eyebrow">Top Rated This Week</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:24px;">
+      <h2 class="section-title" style="margin-bottom:0">Highly Scored Wines</h2>
+      <a onclick="showPage('findwine')" style="font-size:13px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px;">View all</a>
+    </div>
+    <div class="card-grid">
+      <div class="card"><div class="card-score">96</div><div class="card-score-label">pts</div><div class="card-name">Opus One 2019</div><div class="card-sub">Napa Valley, California</div><span class="card-tag">Cabernet Blend</span></div>
+      <div class="card"><div class="card-score">95</div><div class="card-score-label">pts</div><div class="card-name">Cloudy Bay Sauvignon Blanc</div><div class="card-sub">Marlborough, New Zealand</div><span class="card-tag">Sauvignon Blanc</span></div>
+      <div class="card"><div class="card-score">94</div><div class="card-score-label">pts</div><div class="card-name">Meiomi Pinot Noir</div><div class="card-sub">California</div><span class="card-tag">Pinot Noir</span></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-sm">
+    <div class="eyebrow">Quick Access</div>
+    <div class="card-grid-4">
+      <div class="card" onclick="showPage('findwine');setTimeout(()=>showScanDemo(),200)" style="text-align:center;padding:32px 16px;"><div style="font-size:36px;margin-bottom:12px;">📷</div><div style="font-family:var(--font-display);font-size:16px;margin-bottom:4px;">Scan a Bottle</div><div style="font-size:12px;color:var(--ink-light);font-weight:300;">Instant ID & rating</div></div>
+      <div class="card" onclick="showPage('findfood')" style="text-align:center;padding:32px 16px;"><div style="font-size:36px;margin-bottom:12px;">🍽</div><div style="font-family:var(--font-display);font-size:16px;margin-bottom:4px;">Food Pairing</div><div style="font-size:12px;color:var(--ink-light);font-weight:300;">Wine meets dinner</div></div>
+      <div class="card" onclick="showPage('regions')" style="text-align:center;padding:32px 16px;"><div style="font-size:36px;margin-bottom:12px;">🌍</div><div style="font-family:var(--font-display);font-size:16px;margin-bottom:4px;">Wine Regions</div><div style="font-size:12px;color:var(--ink-light);font-weight:300;">Explore the world</div></div>
+      <div class="card" onclick="showPage('grapes')" style="text-align:center;padding:32px 16px;"><div style="font-size:36px;margin-bottom:12px;">🍇</div><div style="font-family:var(--font-display);font-size:16px;margin-bottom:4px;">Grape Guide</div><div style="font-size:12px;color:var(--ink-light);font-weight:300;">Know your varietals</div></div>
+    </div>
+  </div>
+  <footer><div class="logo-sm">5<span style="color:var(--gold)">+</span> Wine & Food</div><p>Prototype · All screens interactive</p></footer>
+</div>
+
+<!-- ══ FIND WINE ══════════════════════════════════════════════════════════════ -->
+<div id="page-findwine" class="page">
+  <div class="section-sm">
+    <div class="eyebrow">Find Wine</div>
+    <h2 class="section-title">Search & Scan</h2>
+    <p class="section-sub">Search by name, region, or style — or scan a bottle for an instant rating.</p>
+    <div style="display:flex;gap:12px;margin-bottom:32px;flex-wrap:wrap;">
+      <div class="scan-box" style="flex:1;min-width:240px;" onclick="showScanDemo()">
+        <div class="scan-icon">📷</div>
+        <h3>Scan a Bottle</h3>
+        <p>Point your camera at any label, wine list, or store shelf</p>
+      </div>
+      <div style="flex:2;min-width:300px;display:flex;flex-direction:column;justify-content:center;">
+        <div class="search-wrap" style="max-width:100%;margin:0 0 12px;">
+          <input type="text" placeholder="e.g. Burgundy Pinot Noir, Malbec…" id="wine-search-input">
+          <button onclick="doWineSearch()">Search</button>
+        </div>
+        <div class="filter-row" style="margin-bottom:0;">
+          <button class="filter-pill active" onclick="toggleFilter(this)">All</button>
+          <button class="filter-pill" onclick="toggleFilter(this)">Red</button>
+          <button class="filter-pill" onclick="toggleFilter(this)">White</button>
+          <button class="filter-pill" onclick="toggleFilter(this)">Rosé</button>
+          <button class="filter-pill" onclick="toggleFilter(this)">Sparkling</button>
+          <button class="filter-pill" onclick="toggleFilter(this)">Under $25</button>
+          <button class="filter-pill" onclick="toggleFilter(this)">90+ pts</button>
+        </div>
+      </div>
+    </div>
+    <div id="scan-anim-wrap" style="text-align:center;display:none;">
+      <div class="scan-animation"><div class="scan-line"></div><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.06;font-size:80px;">🍷</div></div>
+      <div style="font-size:13px;color:var(--ink-light);margin-top:12px;">Identifying wine label…</div>
+    </div>
+    <div id="wine-results" style="display:none;">
+      <div style="font-size:13px;color:var(--ink-light);margin-bottom:20px;" id="wine-results-label">Showing results</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+        <div class="wine-card"><div class="wine-score">96</div><div class="wine-score-label">pts · Pro + Community</div><div class="wine-name">Domaine Drouhin Oregon Pinot Noir</div><div class="wine-region">Willamette Valley, Oregon</div><div class="wine-verdict">"Silky and elegant. Red cherry, earth, a touch of spice."</div><div class="wine-meta"><span>Red · Pinot Noir</span><span>$40–55</span></div></div>
+        <div class="wine-card"><div class="wine-score">93</div><div class="wine-score-label">pts · Pro + Community</div><div class="wine-name">Meiomi Pinot Noir</div><div class="wine-region">California</div><div class="wine-verdict">"Easy-going and crowd-pleasing. Berry fruit, smooth finish."</div><div class="wine-meta"><span>Red · Pinot Noir</span><span>$18–22</span></div></div>
+        <div class="wine-card"><div class="wine-score">91</div><div class="wine-score-label">pts · Pro + Community</div><div class="wine-name">Louis Jadot Bourgogne Pinot Noir</div><div class="wine-region">Burgundy, France</div><div class="wine-verdict">"Classic Burgundy. Light, dry, earthy red with good structure."</div><div class="wine-meta"><span>Red · Pinot Noir</span><span>$20–28</span></div></div>
+      </div>
+    </div>
+    <div class="result-card" id="scan-result">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <div><div class="eyebrow" style="margin-bottom:4px;">Scanned Wine</div><div style="font-family:var(--font-display);font-size:22px;">Chateau Ste. Michelle Riesling</div><div style="font-size:14px;color:var(--ink-light);font-weight:300;margin-top:2px;">Columbia Valley, Washington</div></div>
+        <div style="text-align:right;"><div class="result-score-big">92<span class="result-score-suffix">/100</span></div><div style="font-size:11px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;font-weight:500;">Excellent</div></div>
+      </div>
+      <div style="font-family:var(--font-display);font-style:italic;font-size:15px;color:var(--ink);margin-bottom:20px;line-height:1.6;">"Crisp and refreshing. Peach, apricot, and citrus with a clean, slightly sweet finish. Exceptional value."</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;"><span class="card-tag">White · Off-dry</span><span class="card-tag" style="background:#FFF8EC;color:var(--gold);">$10–14</span><span class="card-tag" style="background:#EEF6EE;color:#2D6E2D;">Great Value</span></div>
+      <div style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500;">Pairs well with</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;background:var(--bg);padding:6px 12px;border-radius:2px;">🌶 Spicy Asian dishes</span>
+        <span style="font-size:12px;background:var(--bg);padding:6px 12px;border-radius:2px;">🥩 Pork</span>
+        <span style="font-size:12px;background:var(--bg);padding:6px 12px;border-radius:2px;">🦐 Seafood</span>
+        <span style="font-size:12px;background:var(--bg);padding:6px 12px;border-radius:2px;">🧀 Soft cheese</span>
+      </div>
+    </div>
+  </div>
+  <footer><div class="logo-sm">5<span style="color:var(--gold)">+</span> Wine & Food</div><p>Prototype · All screens interactive</p></footer>
+</div>
+
+<!-- ══ FIND FOOD ══════════════════════════════════════════════════════════════ -->
+<div id="page-findfood" class="page">
+  <div class="section-sm">
+    <div class="eyebrow">Find Food</div>
+    <h2 class="section-title">Food & Wine Pairing</h2>
+    <p class="section-sub">Start with a wine and find what to cook — or start with a dish and find what to drink.</p>
+    <div class="pairing-tabs">
+      <button class="pairing-tab active" onclick="switchPairTab('wine',this)">I have a wine</button>
+      <button class="pairing-tab" onclick="switchPairTab('food',this)">I have a food</button>
+    </div>
+    <div id="pair-tab-wine" class="tab-content active">
+      <div class="search-wrap" style="max-width:500px;margin-top:0;">
+        <input type="text" placeholder="e.g. Chardonnay, Cabernet, Rosé…">
+        <button onclick="doPairingSearch('wine')">Find Pairings</button>
+      </div>
+      <div id="wine-pairing-result" style="display:none;margin-top:32px;">
+        <div class="eyebrow" style="margin-bottom:8px;">Chardonnay pairs well with</div>
+        <div class="pairing-result">
+          <div class="pair-card"><div class="pair-icon">🍗</div><div class="pair-name">Roast Chicken</div><div class="pair-why">The buttery weight of a full Chardonnay complements the rich, savory skin beautifully.</div></div>
+          <div class="pair-card"><div class="pair-icon">🐟</div><div class="pair-name">Grilled Salmon</div><div class="pair-why">Oaked Chardonnay's creamy texture is a natural match for fatty fish.</div></div>
+          <div class="pair-card"><div class="pair-icon">🧀</div><div class="pair-name">Brie & Camembert</div><div class="pair-why">Soft, creamy cheeses echo the buttery richness of Chardonnay.</div></div>
+          <div class="pair-card"><div class="pair-icon">🍝</div><div class="pair-name">Pasta in Cream Sauce</div><div class="pair-why">Rich sauces love rich wine. A classic match.</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="pair-tab-food" class="tab-content">
+      <div class="search-wrap" style="max-width:500px;margin-top:0;">
+        <input type="text" placeholder="e.g. steak, salmon, pasta, cheese…">
+        <button onclick="doPairingSearch('food')">Find Wines</button>
+      </div>
+      <div id="food-pairing-result" style="display:none;margin-top:32px;">
+        <div class="eyebrow" style="margin-bottom:8px;">Best wines with steak</div>
+        <div class="pairing-result">
+          <div class="pair-card"><div class="pair-icon">🍷</div><div class="pair-name">Cabernet Sauvignon</div><div class="pair-why">Bold tannins cut through the fat in red meat. The most classic pairing in wine.</div></div>
+          <div class="pair-card"><div class="pair-icon">🍷</div><div class="pair-name">Malbec</div><div class="pair-why">Argentina's best grape is built for beef. Dark fruit and a smooth finish.</div></div>
+          <div class="pair-card"><div class="pair-icon">🍷</div><div class="pair-name">Syrah / Shiraz</div><div class="pair-why">Peppery and rich. Especially good with charred, smoky cuts.</div></div>
+          <div class="pair-card"><div class="pair-icon">🍷</div><div class="pair-name">Bordeaux Blend</div><div class="pair-why">The French started this pairing centuries ago for good reason.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer><div class="logo-sm">5<span style="color:var(--gold)">+</span> Wine & Food</div><p>Prototype · All screens interactive</p></footer>
+</div>
+
+<!-- ══ REGIONS ════════════════════════════════════════════════════════════════ -->
+<div id="page-regions" class="page">
+  <div class="regions-main">
+    <!-- Left panel -->
+    <div class="map-left">
+      <div class="map-panel-header">
+        <div class="eyebrow">Wine Regions</div>
+        <div class="map-panel-title" id="map-panel-title">Select a Region</div>
+      </div>
+      <div class="map-breadcrumb" id="map-breadcrumb"><span class="bc-current">World</span></div>
+      <input class="map-panel-search" id="map-panel-search" placeholder="Search regions…" oninput="mapFilterList(this.value)">
+      <div class="map-list-scroll" id="map-list-scroll"></div>
+    </div>
+    <!-- Right panel -->
+    <div class="map-right">
+      <div id="continent-overlay">
+        <div>
+          <div style="text-align:center;margin-bottom:24px;">
+            <div class="eyebrow" style="text-align:center;margin-bottom:6px;">Wine Regions</div>
+            <div style="font-family:var(--font-display);font-size:28px;">Where do you want to explore?</div>
+          </div>
+          <div class="continent-grid">
+            <div class="continent-card" onclick="mapSelectContinent('europe')"><div class="continent-card-icon">🏰</div><div class="continent-card-name">Europe</div><div class="continent-card-sub">France · Italy · Spain · Germany · Portugal</div></div>
+            <div class="continent-card" onclick="mapSelectContinent('northamerica')"><div class="continent-card-icon">🌄</div><div class="continent-card-name">North America</div><div class="continent-card-sub">California · Oregon · Washington</div></div>
+            <div class="continent-card" onclick="mapSelectContinent('southamerica')"><div class="continent-card-icon">🏔</div><div class="continent-card-name">South America</div><div class="continent-card-sub">Argentina · Chile · Uruguay</div></div>
+            <div class="continent-card" onclick="mapSelectContinent('australasia')"><div class="continent-card-icon">🦘</div><div class="continent-card-name">Australasia</div><div class="continent-card-sub">Australia · New Zealand · South Africa</div></div>
+          </div>
+        </div>
+      </div>
+      <div id="map"></div>
+      <div id="map-detail">
+        <div class="detail-title-row">
+          <div><div class="detail-name" id="d-name"></div><div class="detail-meta" id="d-meta"></div></div>
+          <button class="detail-close-btn" onclick="mapCloseDetail()">Close ✕</button>
+        </div>
+        <div class="detail-inner">
+          <div><div class="col-label">About</div><div class="detail-desc-text" id="d-desc"></div></div>
+          <div><div class="col-label">Key Grapes</div><div class="tag-row" id="d-grapes"></div></div>
+          <div><div class="col-label">Notable Producers</div><div class="producer-list" id="d-producers"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GRAPES ═════════════════════════════════════════════════════════════════ -->
+<div id="page-grapes" class="page">
+  <div class="section-sm">
+    <div class="eyebrow">Grape Guide</div>
+    <h2 class="section-title">Know Your Varietals</h2>
+    <p class="section-sub">The essential grapes behind the world's great wines.</p>
+    <div class="filter-row">
+      <button class="filter-pill active" onclick="toggleFilter(this)">All</button>
+      <button class="filter-pill" onclick="toggleFilter(this)">Red</button>
+      <button class="filter-pill" onclick="toggleFilter(this)">White</button>
+    </div>
+    <div class="card-grid">
+      <div class="grape-card"><div class="grape-type"><span class="grape-color-dot" style="background:#8B1A1A;"></span>Red</div><div class="grape-name">Cabernet Sauvignon</div><div class="grape-origin">Bordeaux, France → Global</div><div class="grape-profile"><div class="profile-row"><span style="width:60px;">Body</span><div class="profile-bar-bg"><div class="profile-bar" style="width:90%;"></div></div></div><div class="profile-row"><span style="width:60px;">Tannins</span><div class="profile-bar-bg"><div class="profile-bar" style="width:85%;"></div></div></div><div class="profile-row"><span style="width:60px;">Acidity</span><div class="profile-bar-bg"><div class="profile-bar" style="width:60%;"></div></div></div></div><div style="margin-top:14px;font-size:13px;color:var(--ink-light);font-weight:300;line-height:1.5;">Black currant, cedar, tobacco. Ages for decades. Built for steak.</div></div>
+      <div class="grape-card"><div class="grape-type"><span class="grape-color-dot" style="background:#8B1A1A;"></span>Red</div><div class="grape-name">Pinot Noir</div><div class="grape-origin">Burgundy, France</div><div class="grape-profile"><div class="profile-row"><span style="width:60px;">Body</span><div class="profile-bar-bg"><div class="profile-bar" style="width:45%;"></div></div></div><div class="profile-row"><span style="width:60px;">Tannins</span><div class="profile-bar-bg"><div class="profile-bar" style="width:35%;"></div></div></div><div class="profile-row"><span style="width:60px;">Acidity</span><div class="profile-bar-bg"><div class="profile-bar" style="width:75%;"></div></div></div></div><div style="margin-top:14px;font-size:13px;color:var(--ink-light);font-weight:300;line-height:1.5;">Cherry, raspberry, earth. Light, silky, and hauntingly elegant.</div></div>
+      <div class="grape-card"><div class="grape-type"><span class="grape-color-dot" style="background:#8B1A1A;"></span>Red</div><div class="grape-name">Malbec</div><div class="grape-origin">Cahors, France → Mendoza, Argentina</div><div class="grape-profile"><div class="profile-row"><span style="width:60px;">Body</span><div class="profile-bar-bg"><div class="profile-bar" style="width:78%;"></div></div></div><div class="profile-row"><span style="width:60px;">Tannins</span><div class="profile-bar-bg"><div class="profile-bar" style="width:65%;"></div></div></div><div class="profile-row"><span style="width:60px;">Acidity</span><div class="profile-bar-bg"><div class="profile-bar" style="width:50%;"></div></div></div></div><div style="margin-top:14px;font-size:13px;color:var(--ink-light);font-weight:300;line-height:1.5;">Plum, blackberry, chocolate. Lush and velvety. Loves red meat.</div></div>
+      <div class="grape-card"><div class="grape-type"><span class="grape-color-dot" style="background:#D4A83E;"></span>White</div><div class="grape-name">Chardonnay</div><div class="grape-origin">Burgundy, France → Global</div><div class="grape-profile"><div class="profile-row"><span style="width:60px;">Body</span><div class="profile-bar-bg"><div class="profile-bar" style="width:70%;"></div></div></div><div class="profile-row"><span style="width:60px;">Tannins</span><div class="profile-bar-bg"><div class="profile-bar" style="width:5%;"></div></div></div><div class="profile-row"><span style="width:60px;">Acidity</span><div class="profile-bar-bg"><div class="profile-bar" style="width:60%;"></div></div></div></div><div style="margin-top:14px;font-size:13px;color:var(--ink-light);font-weight:300;line-height:1.5;">Apple, lemon, butter (if oaked). The world's most popular white grape.</div></div>
+      <div class="grape-card"><div class="grape-type"><span class="grape-color-dot" style="background:#D4A83E;"></span>White</div><div class="grape-name">Sauvignon Blanc</div><div class="grape-origin">Loire Valley → New Zealand</div><div class="grape-profile"><div class="profile-row"><span style="width:60px;">Body</span><div class="profile-bar-bg"><div class="profile-bar" style="width:35%;"></div></div></div><div class="profile-row"><span style="width:60px;">Tannins</span><div class="profile-bar-bg"><div class="profile-bar" style="width:5%;"></div></div></div><div class="profile-row"><span style="width:60px;">Acidity</span><div class="profile-bar-bg"><div class="profile-bar" style="width:88%;"></div></div></div></div><div style="margin-top:14px;font-size:13px;color:var(--ink-light);font-weight:300;line-height:1.5;">Grassy, citrus, gooseberry. Crisp and refreshing. Perfect for summer.</div></div>
+      <div class="grape-card"><div class="grape-type"><span class="grape-color-dot" style="background:#D4A83E;"></span>White</div><div class="grape-name">Riesling</div><div class="grape-origin">Germany → Alsace, Austria</div><div class="grape-profile"><div class="profile-row"><span style="width:60px;">Body</span><div class="profile-bar-bg"><div class="profile-bar" style="width:30%;"></div></div></div><div class="profile-row"><span style="width:60px;">Tannins</span><div class="profile-bar-bg"><div class="profile-bar" style="width:5%;"></div></div></div><div class="profile-row"><span style="width:60px;">Acidity</span><div class="profile-bar-bg"><div class="profile-bar" style="width:92%;"></div></div></div></div><div style="margin-top:14px;font-size:13px;color:var(--ink-light);font-weight:300;line-height:1.5;">Peach, apricot, petrol. Ranges from bone-dry to lusciously sweet.</div></div>
+    </div>
+  </div>
+  <footer><div class="logo-sm">5<span style="color:var(--gold)">+</span> Wine & Food</div><p>Prototype · All screens interactive</p></footer>
+</div>
+
+<!-- ══ OTHER ══════════════════════════════════════════════════════════════════ -->
+<div id="page-other" class="page">
+  <div class="section-sm">
+    <div class="eyebrow">More</div>
+    <h2 class="section-title">Other Features</h2>
+    <p class="section-sub">Tools and resources to deepen your wine knowledge.</p>
+    <div class="other-grid">
+      <div class="other-card"><div class="other-icon">📖</div><div class="other-title">Wine Glossary</div><div class="other-desc">Plain-English definitions for every wine term. Legs, tannins, terroir, mouthfeel — all explained simply.</div></div>
+      <div class="other-card"><div class="other-icon">📅</div><div class="other-title">Events & Tastings</div><div class="other-desc">Find wine tastings, festivals, and special offers near you. Filtered to match wines you've shown interest in.</div></div>
+      <div class="other-card"><div class="other-icon">📋</div><div class="other-title">My Wine Log</div><div class="other-desc">Track wines you've tried, add your own rating, and build a personal collection. The more you log, the better your recommendations get.</div></div>
+      <div class="other-card"><div class="other-icon">🏆</div><div class="other-title">Top 100 Lists</div><div class="other-desc">Curated annual rankings from top critics. Organized by style, region, and price to make finding your next bottle effortless.</div></div>
+      <div class="other-card"><div class="other-icon">🏠</div><div class="other-title">Winery Profiles</div><div class="other-desc">Deep dives into the estates behind the wines you love. History, winemaking philosophy, and visiting information.</div></div>
+      <div class="other-card"><div class="other-icon">⚙️</div><div class="other-title">Preferences & Account</div><div class="other-desc">Set your taste profile, price range, and favorite styles so every recommendation feels personal from day one.</div></div>
+    </div>
+  </div>
+  <footer><div class="logo-sm">5<span style="color:var(--gold)">+</span> Wine & Food</div><p>Prototype · All screens interactive</p></footer>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// PAGE NAVIGATION
+// ════════════════════════════════════════════
+let mapInitialized = false;
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  if (id !== 'regions') window.scrollTo(0, 0);
+  if (id === 'regions' && !mapInitialized) {
+    mapInitialized = true;
+    setTimeout(initMap, 50);
+  }
+}
+
+// ════════════════════════════════════════════
+// SHARED UI HELPERS
+// ════════════════════════════════════════════
+function toggleFilter(btn) {
+  btn.closest('.filter-row').querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function doHomeSearch() { showPage('findwine'); setTimeout(() => { document.getElementById('wine-results').style.display='block'; document.getElementById('scan-anim-wrap').style.display='none'; document.getElementById('scan-result').classList.remove('show'); }, 100); }
+function doWineSearch() { const q=document.getElementById('wine-search-input').value||'Pinot Noir'; document.getElementById('wine-results-label').innerHTML='Showing results for <strong>"'+q+'"</strong>'; document.getElementById('wine-results').style.display='block'; document.getElementById('scan-anim-wrap').style.display='none'; document.getElementById('scan-result').classList.remove('show'); }
+function showScanDemo() { document.getElementById('scan-anim-wrap').style.display='block'; document.getElementById('wine-results').style.display='none'; document.getElementById('scan-result').classList.remove('show'); setTimeout(()=>{ document.getElementById('scan-anim-wrap').style.display='none'; document.getElementById('scan-result').classList.add('show'); },2000); }
+function switchPairTab(which,btn) { document.querySelectorAll('.pairing-tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active')); document.getElementById('pair-tab-'+which).classList.add('active'); }
+function doPairingSearch(which) { document.getElementById(which==='wine'?'wine-pairing-result':'food-pairing-result').style.display='block'; }
+
+// ════════════════════════════════════════════
+// MAP DATA
+// ════════════════════════════════════════════
+const MDATA = {
+  europe:{ label:"Europe", lat:47, lng:10, zoom:5,
+    countries:{
+      france:{ label:"France", lat:47, lng:2.5, zoom:6, regions:{
+        bordeaux:{ label:"Bordeaux", lat:44.84, lng:-0.58, zoom:9, desc:"The world's most famous red wine region, divided by the Gironde into Left Bank (Cabernet-led) and Right Bank (Merlot-led). Home to legendary classified châteaux.", grapes:["Cabernet Sauvignon","Merlot","Cabernet Franc","Sauvignon Blanc"], producers:["Château Margaux","Château Pétrus","Château Latour","Mouton Rothschild"],
+          avas:{ medoc:{label:"Médoc",lat:45.18,lng:-0.82,desc:"Left Bank heartland. Gravelly soils, Cabernet Sauvignon dominant. Home of the 1855 Classification.",grapes:["Cabernet Sauvignon","Merlot"],producers:["Château Latour","Château Margaux","Cos d'Estournel"]}, saint_emilion:{label:"Saint-Émilion",lat:44.89,lng:-0.16,desc:"UNESCO-listed Right Bank appellation. Clay limestone soils favor Merlot. Ancient hilltop village.",grapes:["Merlot","Cabernet Franc"],producers:["Cheval Blanc","Ausone","Angélus","Pavie"]}, pomerol:{label:"Pomerol",lat:44.92,lng:-0.18,desc:"Tiny Right Bank. Iron-rich clay soils produce Merlot of unparalleled richness. Home to Pétrus.",grapes:["Merlot","Cabernet Franc"],producers:["Pétrus","Le Pin","Lafleur"]}, sauternes:{label:"Sauternes",lat:44.57,lng:-0.33,desc:"World's greatest sweet wine region. Noble rot concentrates sugars to extraordinary levels. Château d'Yquem reigns supreme.",grapes:["Sémillon","Sauvignon Blanc"],producers:["Château d'Yquem","Rieussec","Suduiraut"]}, graves:{label:"Graves",lat:44.72,lng:-0.5,desc:"Bordeaux's original region. Gravel soils produce structured reds and distinctive dry whites.",grapes:["Cabernet Sauvignon","Sauvignon Blanc"],producers:["Château Haut-Brion","Domaine de Chevalier"]} }
+        },
+        burgundy:{ label:"Burgundy", lat:47.05, lng:4.85, zoom:9, desc:"Spiritual home of Pinot Noir and Chardonnay. Tiny plots produce wines of extraordinary distinctiveness.", grapes:["Pinot Noir","Chardonnay","Aligoté","Gamay"], producers:["Domaine de la Romanée-Conti","Leroy","Rousseau","Leflaive","Coche-Dury"],
+          avas:{ chablis:{label:"Chablis",lat:47.81,lng:3.8,desc:"Northernmost Burgundy. Kimmeridgian limestone gives Chardonnay a steely, flinty, mineral character unlike anywhere else.",grapes:["Chardonnay"],producers:["Raveneau","Dauvissat","William Fèvre"]}, cote_de_nuits:{label:"Côte de Nuits",lat:47.18,lng:4.96,desc:"A narrow hillside strip containing the world's greatest Pinot Noir. Vosne-Romanée, Gevrey-Chambertin.",grapes:["Pinot Noir"],producers:["Romanée-Conti","Rousseau","Mugnier","Roumier"]}, cote_de_beaune:{label:"Côte de Beaune",lat:46.98,lng:4.86,desc:"White Burgundy heartland. Meursault, Puligny-Montrachet, Chassagne-Montrachet. World benchmark Chardonnay.",grapes:["Chardonnay","Pinot Noir"],producers:["Leflaive","Coche-Dury","Comtes Lafon"]}, maconnais:{label:"Mâconnais",lat:46.3,lng:4.83,desc:"Approachable, affordable Chardonnay. Pouilly-Fuissé is the star. Value-driven but capable of real complexity.",grapes:["Chardonnay","Gamay"],producers:["Guffens-Heynen","Château Fuissé","Verget"]}, beaujolais:{label:"Beaujolais",lat:46.15,lng:4.7,desc:"Gamay grape, granite soils. Beaujolais Nouveau and the serious Cru Beaujolais wines.",grapes:["Gamay"],producers:["Marcel Lapierre","Jean Foillard","Château Thivin"]} }
+        },
+        champagne_r:{ label:"Champagne", lat:49.08, lng:3.95, zoom:9, desc:"The only sparkling wine legally called Champagne. Chalk soils and cool climate create essential high acidity.", grapes:["Chardonnay","Pinot Noir","Pinot Meunier"], producers:["Krug","Salon","Jacques Selosse","Bollinger"],
+          avas:{ montagne:{label:"Montagne de Reims",lat:49.17,lng:4.05,desc:"Forest-covered plateau. Pinot Noir dominant. Full-bodied, complex Champagnes.",grapes:["Pinot Noir"],producers:["Krug","Bollinger","Egly-Ouriet"]}, marne:{label:"Vallée de la Marne",lat:49.05,lng:3.75,desc:"River valley where Pinot Meunier thrives. Adds fruitiness and approachability to blends.",grapes:["Pinot Meunier"],producers:["Bereche","Georges Laval"]}, cote_blancs:{label:"Côte des Blancs",lat:48.97,lng:3.97,desc:"The Chardonnay heartland of Champagne. Chalk soils, laser precision. Blanc de Blancs territory.",grapes:["Chardonnay"],producers:["Salon","Pierre Peters","Agrapart"]} }
+        },
+        rhone_r:{ label:"Rhône Valley", lat:45.1, lng:4.85, zoom:8, desc:"Powerful Syrah in the north and generous Grenache blends in the south. France's most diverse red wine corridor.", grapes:["Syrah","Grenache","Mourvèdre","Viognier"], producers:["Chapoutier","Guigal","Jaboulet","Chave"],
+          avas:{ cote_rotie:{label:"Côte-Rôtie",lat:45.48,lng:4.8,desc:"The 'Roasted Slope.' Steep granite terraces. The most elegant, perfumed Syrah in the world.",grapes:["Syrah","Viognier"],producers:["Guigal","Jasmin","Rostaing","Jamet"]}, hermitage:{label:"Hermitage",lat:45.07,lng:4.84,desc:"A single granite hill. Some of France's greatest and most long-lived reds and whites.",grapes:["Syrah","Marsanne","Roussanne"],producers:["Chave","Chapoutier","Jaboulet"]}, chateauneuf:{label:"Châteauneuf-du-Pape",lat:44.06,lng:4.83,desc:"Galets roulés (rounded stones) retain daytime heat. Grenache-based blends of extraordinary richness.",grapes:["Grenache","Syrah","Mourvèdre"],producers:["Château Rayas","Beaucastel","Henri Bonneau"]} }
+        },
+        loire_r:{ label:"Loire Valley", lat:47.4, lng:0.7, zoom:8, desc:"France's longest river. Astonishing diversity from mineral Muscadet to great Cabernet Franc reds.", grapes:["Sauvignon Blanc","Chenin Blanc","Cabernet Franc"], producers:["Huet","Clos Rougeard","Dagueneau","Vacheron"],
+          avas:{ sancerre:{label:"Sancerre",lat:47.33,lng:2.84,desc:"The benchmark for Sauvignon Blanc. Flint and limestone soils give wines of intense mineral character.",grapes:["Sauvignon Blanc","Pinot Noir"],producers:["Vacheron","Henri Bourgeois","Alphonse Mellot"]}, vouvray:{label:"Vouvray",lat:47.42,lng:0.8,desc:"Chenin Blanc in all styles — dry to lusciously sweet. Moelleux can age for half a century.",grapes:["Chenin Blanc"],producers:["Huet","Foreau","Champalou"]}, chinon:{label:"Chinon",lat:47.17,lng:0.25,desc:"The finest Cabernet Franc in France. Red fruit, herbs, pencil shavings. Lighter than Bordeaux but age-worthy.",grapes:["Cabernet Franc"],producers:["Clos Rougeard","Jouguet","Alliet"]} }
+        }
+      }},
+      italy:{ label:"Italy", lat:43, lng:12, zoom:6, regions:{
+        tuscany:{ label:"Tuscany", lat:43.45, lng:11.1, zoom:9, desc:"Rolling hills, cypress trees, and Sangiovese. Chianti Classico, Brunello di Montalcino, and the bold Super Tuscans of Bolgheri.", grapes:["Sangiovese","Cabernet Sauvignon","Merlot"], producers:["Sassicaia","Ornellaia","Biondi-Santi","Antinori"],
+          avas:{ chianti_classico:{label:"Chianti Classico",lat:43.48,lng:11.27,desc:"Historic heart of Chianti between Florence and Siena. Sangiovese with earthy complexity. Gran Selezione is the top tier.",grapes:["Sangiovese"],producers:["Fontodi","Isole e Olena","Montevertine","Castello di Ama"]}, brunello:{label:"Brunello di Montalcino",lat:43.06,lng:11.49,desc:"Italy's most prestigious red. 100% Sangiovese. Years of aging required. Extraordinary longevity.",grapes:["Sangiovese"],producers:["Biondi-Santi","Soldera","Poggio di Sotto"]}, bolgheri:{label:"Bolgheri",lat:43.24,lng:10.61,desc:"Home of the Super Tuscans. International varieties broke Italy's wine laws here in the 1970s.",grapes:["Cabernet Sauvignon","Merlot","Cabernet Franc"],producers:["Sassicaia","Ornellaia","Masseto"]} }
+        },
+        piedmont:{ label:"Piedmont", lat:44.7, lng:8.05, zoom:9, desc:"Northwestern Italy. Home to the 'King' (Barolo) and 'Queen' (Barbaresco) of Italian wine, both from Nebbiolo.", grapes:["Nebbiolo","Barbera","Dolcetto","Moscato"], producers:["Gaja","Giacomo Conterno","Bartolo Mascarello","Vietti"],
+          avas:{ barolo:{label:"Barolo",lat:44.61,lng:7.93,desc:"The 'King of Wines.' Nebbiolo on clay-limestone. Tar and roses. Ages for decades.",grapes:["Nebbiolo"],producers:["Gaja","Conterno","Mascarello","Giacosa","Vietti"]}, barbaresco:{label:"Barbaresco",lat:44.69,lng:8.08,desc:"The 'Queen.' Sandier soils give more approachable Nebbiolo. Gaja's home village.",grapes:["Nebbiolo"],producers:["Gaja","Giacosa","Produttori del Barbaresco"]}, asti_r:{label:"Asti & Moscato d'Asti",lat:44.9,lng:8.2,desc:"World-famous sweet sparkling wines. Low alcohol, effervescent, irresistibly aromatic.",grapes:["Moscato Bianco"],producers:["Ceretto","Vietti","La Spinetta"]} }
+        },
+        veneto:{ label:"Veneto", lat:45.45, lng:11.55, zoom:9, desc:"Italy's most productive region. From light Pinot Grigio to the powerful Amarone made from dried grapes.", grapes:["Garganega","Glera","Corvina","Molinara"], producers:["Masi","Allegrini","Dal Forno Romano","Quintarelli"],
+          avas:{ amarone_r:{label:"Amarone della Valpolicella",lat:45.53,lng:10.95,desc:"Made from dried grapes (appassimento). Extraordinarily rich, powerful, complex.",grapes:["Corvina","Rondinella","Molinara"],producers:["Quintarelli","Dal Forno Romano","Masi","Allegrini"]}, soave_r:{label:"Soave Classico",lat:45.42,lng:11.25,desc:"White wine from Garganega. Volcanic basalt soils give fascinating mineral depth.",grapes:["Garganega","Trebbiano di Soave"],producers:["Pieropan","Gini","Inama","Prà"]}, prosecco_r:{label:"Prosecco — Conegliano-Valdobbiadene",lat:45.9,lng:12.0,desc:"World's most popular sparkling wine. Glera grape, tank-fermented. Light, easy, affordable.",grapes:["Glera"],producers:["Nino Franco","Bisol","Ruggeri"]} }
+        }
+      }},
+      spain:{ label:"Spain", lat:40.4, lng:-3.7, zoom:6, regions:{
+        rioja:{ label:"Rioja", lat:42.45, lng:-2.45, zoom:9, desc:"Spain's most famous wine region. Tempranillo backbone aged in American or French oak.", grapes:["Tempranillo","Garnacha","Mazuelo","Graciano"], producers:["La Rioja Alta","CVNE","Muga","Roda","Artadi"],
+          avas:{ rioja_alta:{label:"Rioja Alta",lat:42.43,lng:-2.7,desc:"Most prestigious sub-zone. Higher altitude, cooler temperatures. The traditional Rioja heartland.",grapes:["Tempranillo"],producers:["La Rioja Alta","CVNE","Muga","López de Heredia"]}, rioja_alavesa:{label:"Rioja Alavesa",lat:42.55,lng:-2.55,desc:"Basque Country terroir. Limestone clay soils. The most elegant and mineral expression of Rioja.",grapes:["Tempranillo"],producers:["Artadi","Remírez de Ganuza","Contino","Baigorri"]}, rioja_oriental:{label:"Rioja Oriental",lat:42.35,lng:-1.85,desc:"Warmer, flatter. Garnacha thrives. Fuller-bodied wines.",grapes:["Garnacha","Tempranillo"],producers:["Palacios Remondo","Barón de Ley"]} }
+        },
+        ribera:{ label:"Ribera del Duero", lat:41.67, lng:-3.7, zoom:9, desc:"Spain's great rival to Rioja. High-altitude plateau on the Duero river. Tinto Fino of extraordinary concentration.", grapes:["Tinto Fino","Garnacha","Cabernet Sauvignon"], producers:["Vega Sicilia","Pingus","Pesquera","Emilio Moro"],
+          avas:{ valbuena:{label:"Valbuena de Duero",lat:41.62,lng:-4.17,desc:"Home of Spain's most iconic estate, Vega Sicilia. Unico is Spain's most celebrated wine.",grapes:["Tinto Fino","Cabernet Sauvignon"],producers:["Vega Sicilia","Alión"]}, roa:{label:"Roa de Duero",lat:41.7,lng:-3.92,desc:"The Pingus zone. Spain's most expensive wine comes from here.",grapes:["Tinto Fino"],producers:["Pingus","Dominio de Pingus"]} }
+        },
+        priorat:{ label:"Priorat", lat:41.19, lng:0.73, zoom:10, desc:"Catalonia's sacred wine territory. Black slate (llicorella) and old Garnacha vines. Intense, mineral, world-class.", grapes:["Garnacha","Cariñena","Cabernet Sauvignon","Syrah"], producers:["Alvaro Palacios","Clos Mogador","Mas Doix","Vall Llach"],
+          avas:{ gratallops:{label:"Gratallops",lat:41.19,lng:0.78,desc:"Epicenter of modern Priorat. Alvaro Palacios' legendary L'Ermita. Extreme concentration.",grapes:["Garnacha","Cariñena"],producers:["Alvaro Palacios","Clos Mogador"]}, vilella:{label:"La Vilella Baixa",lat:41.22,lng:0.65,desc:"Higher altitude. Cooler temperatures. More aromatic wines with slightly less power.",grapes:["Garnacha","Cariñena"],producers:["Mas Doix","Clos Figueras","Ferrer Bobet"]} }
+        }
+      }},
+      germany:{ label:"Germany", lat:51, lng:10, zoom:6, regions:{
+        mosel:{ label:"Mosel", lat:50.1, lng:7.1, zoom:9, desc:"The world's greatest Riesling region. Slate soils on steep slopes. Electric acidity, low alcohol, extraordinary complexity.", grapes:["Riesling"], producers:["Egon Müller","Dr. Loosen","J.J. Prüm","Weiser-Künstler"],
+          avas:{ bernkastel:{label:"Bernkasteler Mosel",lat:49.91,lng:7.07,desc:"The Doctor vineyard is Germany's most coveted. Blue slate soils. Magnificent Rieslings.",grapes:["Riesling"],producers:["J.J. Prüm","Dr. Loosen","Wegeler","Thanisch"]}, saar:{label:"Saar Valley",lat:49.63,lng:6.63,desc:"The most austere Mosel tributary. Cold conditions produce steely, mineral Rieslings.",grapes:["Riesling"],producers:["Egon Müller","Forstmeister Geltz Zilliken","Van Volxem"]}, piesport:{label:"Piesport",lat:49.88,lng:6.93,desc:"The Goldtröpfchen ('golden drop') is the crown jewel. Fragrant, honeyed Riesling.",grapes:["Riesling"],producers:["Reinhold Haart","St. Urbans-Hof"]} }
+        },
+        rheingau:{ label:"Rheingau", lat:50.02, lng:8.03, zoom:10, desc:"Where the Rhine runs east-west, giving south-facing slopes for Riesling and Pinot Noir.", grapes:["Riesling","Pinot Noir (Spätburgunder)"], producers:["Künstler","Robert Weil","Josef Leitz","Georg Breuer"],
+          avas:{ rudesheim:{label:"Rüdesheim",lat:49.98,lng:7.92,desc:"The Berg vineyard sites. Powerful, concentrated, age-worthy Rieslings.",grapes:["Riesling"],producers:["Georg Breuer","Josef Leitz","August Kesseler"]}, hochheim:{label:"Hochheim",lat:50.0,lng:8.35,desc:"'Hock' — the old English name for Rhine wine — derives from Hochheim. Fuller-bodied Rieslings.",grapes:["Riesling"],producers:["Domdechant Werner","Künstler"]} }
+        }
+      }},
+      portugal:{ label:"Portugal", lat:39.5, lng:-8, zoom:7, regions:{
+        douro:{ label:"Douro Valley", lat:41.15, lng:-7.68, zoom:9, desc:"One of the world's oldest demarcated regions (1756). Source of Port and world-class dry table wines. Extreme temperatures and schist soils.", grapes:["Touriga Nacional","Tinta Roriz","Touriga Franca"], producers:["Quinta do Vale Meão","Niepoort","Ramos Pinto","Prats & Symington"],
+          avas:{ cima_corgo:{label:"Cima Corgo",lat:41.18,lng:-7.52,desc:"The prestige zone of the Douro, centered on Pinhão. Best Port quintas and most concentrated dry reds.",grapes:["Touriga Nacional","Tinta Roriz"],producers:["Graham's","Taylor's","Fonseca","Quinta do Crasto"]}, baixo_corgo:{label:"Baixo Corgo",lat:41.12,lng:-7.88,desc:"Westernmost, most fertile zone. Lighter Ports and fresh aromatic table wines.",grapes:["Touriga Franca","Tinta Barroca"],producers:["Sandeman","Calem","Ramos Pinto"]} }
+        },
+        vinho_verde:{ label:"Vinho Verde", lat:41.75, lng:-8.35, zoom:9, desc:"Portugal's green northwest. Fresh, low-alcohol wines. Alvarinho in the Monção sub-region is the standout.", grapes:["Alvarinho","Loureiro","Arinto"], producers:["Anselmo Mendes","Quinta de Soalheiro","Niepoort"],
+          avas:{ moncao:{label:"Monção & Melgaço",lat:42.07,lng:-8.48,desc:"On the Spanish border. Alvarinho produces its most complex expression — rich, age-worthy, mineral.",grapes:["Alvarinho"],producers:["Anselmo Mendes","Quinta de Soalheiro"]}, lima:{label:"Lima Valley",lat:41.77,lng:-8.58,desc:"Loureiro grape dominant. Fragrant, floral wines with citrus and stone fruit character.",grapes:["Loureiro","Arinto"],producers:["Quinta de Ameal","Soalheiro"]} }
+        }
+      }}
+    }
+  },
+
+  northamerica:{ label:"North America", lat:44, lng:-110, zoom:4,
+    countries:{
+      california:{ label:"California", lat:37.5, lng:-120, zoom:7, regions:{
+        napa:{ label:"Napa Valley", lat:38.5, lng:-122.4, zoom:10, desc:"California's most prestigious wine valley. 30 miles long, 16 sub-AVAs. World-renowned Cabernet Sauvignon of power and longevity.", grapes:["Cabernet Sauvignon","Merlot","Chardonnay","Sauvignon Blanc"], producers:["Opus One","Screaming Eagle","Harlan Estate","Stag's Leap","Heitz"],
+          avas:{ oakville:{label:"Oakville",lat:38.43,lng:-122.41,desc:"Heart of Napa Cabernet. Well-drained alluvial soils. Some of the most famous addresses in American wine.",grapes:["Cabernet Sauvignon","Merlot"],producers:["Opus One","Far Niente","Robert Mondavi","Groth"]}, rutherford:{label:"Rutherford",lat:38.46,lng:-122.42,desc:"'Rutherford Dust' — silty, gravelly soil giving a distinctive dusty, earthy quality to Cabernet.",grapes:["Cabernet Sauvignon"],producers:["Beaulieu Vineyard","Inglenook","Caymus","Frog's Leap"]}, stags_leap:{label:"Stags Leap District",lat:38.4,lng:-122.36,desc:"Volcanic soils, afternoon wind. Elegant, structured Cabernets. Site of the legendary 1976 Paris Tasting.",grapes:["Cabernet Sauvignon","Merlot"],producers:["Stag's Leap Wine Cellars","Clos du Val","Pine Ridge","Shafer"]}, howell_mtn:{label:"Howell Mountain",lat:38.58,lng:-122.35,desc:"High-altitude AVA above the fog line. Volcanic soils. Cabernet of extraordinary concentration.",grapes:["Cabernet Sauvignon","Zinfandel"],producers:["Dunn Vineyards","La Jota","Robert Craig","Outpost"]}, carneros:{label:"Los Carneros",lat:38.25,lng:-122.4,desc:"Straddles Napa and Sonoma. Cool, windy, fog-influenced. California Pinot Noir and Chardonnay at their finest.",grapes:["Pinot Noir","Chardonnay"],producers:["Domaine Carneros","Acacia","Etude","Saintsbury"]} }
+        },
+        sonoma:{ label:"Sonoma County", lat:38.5, lng:-122.85, zoom:9, desc:"Larger and more diverse than Napa. Pinot Noir, Chardonnay, and Zinfandel all excel here.", grapes:["Pinot Noir","Chardonnay","Zinfandel","Cabernet Sauvignon"], producers:["Kistler","Williams Selyem","Littorai","Ridge","Rochioli"],
+          avas:{ russian_river:{label:"Russian River Valley",lat:38.48,lng:-122.95,desc:"Pacific fog creates one of California's coolest growing areas. The benchmark for California Pinot Noir.",grapes:["Pinot Noir","Chardonnay"],producers:["Williams Selyem","Rochioli","Gary Farrell","Kistler"]}, alexander_valley:{label:"Alexander Valley",lat:38.73,lng:-122.87,desc:"Warm, inland. California's most Bordeaux-like Cabernet Sauvignon — silky texture and black fruit.",grapes:["Cabernet Sauvignon","Merlot","Zinfandel"],producers:["Ridge","Jordan","Simi","Alexander Valley Vineyards"]}, dry_creek:{label:"Dry Creek Valley",lat:38.62,lng:-123.02,desc:"Spiritual home of California Zinfandel. Ancient vines, warm days, cool nights.",grapes:["Zinfandel","Sauvignon Blanc"],producers:["Ridge Lytton Springs","Rafanelli","Quivira"]} }
+        },
+        central_coast:{ label:"Central Coast", lat:35.7, lng:-120.7, zoom:8, desc:"250-mile stretch from San Francisco to Santa Barbara. Diverse microclimates for cool-climate Pinot to powerful Rhône varieties.", grapes:["Pinot Noir","Chardonnay","Syrah","Grenache"], producers:["Au Bon Climat","Sine Qua Non","Brewer-Clifton","Tablas Creek"],
+          avas:{ santa_barbara:{label:"Santa Barbara County",lat:34.62,lng:-120.1,desc:"Transverse mountains funnel Pacific air inland. Santa Rita Hills for Pinot/Chardonnay; Happy Canyon for Cabernet.",grapes:["Pinot Noir","Chardonnay","Syrah"],producers:["Au Bon Climat","Brewer-Clifton","Qupé","Foxen"]}, paso_robles:{label:"Paso Robles",lat:35.63,lng:-120.69,desc:"Warmer, limestone soils. Rhône varieties and Zinfandel thrive. Tablas Creek led the California Rhône revolution.",grapes:["Zinfandel","Cabernet Sauvignon","Syrah","Grenache"],producers:["Tablas Creek","Saxum","Justin","L'Aventure"]}, santa_lucia:{label:"Santa Lucia Highlands",lat:36.3,lng:-121.3,desc:"High-altitude AVA (1,200–2,200 ft) in Monterey. Intense winds and cool temps. Elegant Pinot Noir.",grapes:["Pinot Noir","Chardonnay","Syrah"],producers:["Pisoni","Morgan","Testarossa","Bernardus"]} }
+        }
+      }},
+      oregon:{ label:"Oregon", lat:44.5, lng:-122.5, zoom:7, regions:{
+        willamette:{ label:"Willamette Valley", lat:45.3, lng:-123.05, zoom:9, desc:"Oregon's great valley. Cool, Burgundian climate. Elegant Pinot Noir and serious Pinot Gris.", grapes:["Pinot Noir","Pinot Gris","Chardonnay","Pinot Blanc"], producers:["Eyrie Vineyards","Domaine Drouhin","Beaux Frères","Ponzi","Adelsheim"],
+          avas:{ dundee:{label:"Dundee Hills",lat:45.28,lng:-123.05,desc:"Red Jory volcanic soils. Oregon Pinot Noir's distinctive iron-mineral quality.",grapes:["Pinot Noir","Chardonnay"],producers:["Eyrie","Stoller","Domaine Drouhin","Sokol Blosser"]}, eola:{label:"Eola-Amity Hills",lat:45.05,lng:-123.13,desc:"Van Duzer wind corridor from the Pacific. Wind-stressed vines, structured Pinot Noir.",grapes:["Pinot Noir","Chardonnay"],producers:["Bethel Heights","Cristom","Evesham Wood"]}, chehalem:{label:"Chehalem Mountains",lat:45.53,lng:-123.0,desc:"Diverse AVA with volcanic, sedimentary, and marine soils. Wide range of Pinot Noir styles.",grapes:["Pinot Noir","Pinot Gris"],producers:["Adelsheim","Ponzi","Bergström"]} }
+        }
+      }},
+      washington:{ label:"Washington", lat:47.5, lng:-120, zoom:7, regions:{
+        columbia:{ label:"Columbia Valley", lat:46.5, lng:-119.5, zoom:8, desc:"Washington's dominant AVA east of the Cascades. Rain-shadow desert. Hot days, cold nights. Intense fruit, fresh acidity.", grapes:["Cabernet Sauvignon","Merlot","Riesling","Syrah","Chardonnay"], producers:["Quilceda Creek","Leonetti Cellar","Cayuse","DeLille Cellars"],
+          avas:{ walla_walla:{label:"Walla Walla Valley",lat:46.06,lng:-118.33,desc:"Washington's most famous wine town. Boutique wineries. Syrah is rising alongside Cabernet.",grapes:["Cabernet Sauvignon","Syrah","Merlot"],producers:["Leonetti Cellar","Cayuse","Woodward Canyon","L'Ecole No 41"]}, red_mountain:{label:"Red Mountain",lat:46.22,lng:-119.55,desc:"Washington's smallest, arguably most prestigious AVA. Caliche soils. Cabernet of extraordinary concentration.",grapes:["Cabernet Sauvignon","Merlot"],producers:["Quilceda Creek","Col Solare","Kiona","Hedges"]}, yakima:{label:"Yakima Valley",lat:46.6,lng:-120.5,desc:"Washington's first designated wine region. Warm and dry, long growing season.",grapes:["Riesling","Chardonnay","Merlot"],producers:["Chateau Ste. Michelle","Naches Heights"]} }
+        }
+      }}
+    }
+  },
+
+  southamerica:{ label:"South America", lat:-30, lng:-65, zoom:4,
+    countries:{
+      argentina:{ label:"Argentina", lat:-34, lng:-67, zoom:7, regions:{
+        mendoza:{ label:"Mendoza", lat:-33.0, lng:-68.9, zoom:9, desc:"Argentina's greatest wine region. Against the Andes at high altitude. Malbec of extraordinary depth.", grapes:["Malbec","Cabernet Sauvignon","Torrontés","Bonarda"], producers:["Catena Zapata","Achaval Ferrer","Clos de los Siete","Zuccardi","Viña Cobos"],
+          avas:{ lujan:{label:"Luján de Cuyo",lat:-33.05,lng:-68.88,desc:"Historic heart of Mendoza Malbec. 900–1100m altitude. Old vines, gravel-clay soils.",grapes:["Malbec","Cabernet Sauvignon"],producers:["Catena Zapata","Achaval Ferrer","Viña Cobos"]}, maipu:{label:"Maipú",lat:-32.98,lng:-68.77,desc:"Lower-lying and warmer. Excellent value Malbec and Cabernet Sauvignon.",grapes:["Malbec","Cabernet Sauvignon","Bonarda"],producers:["Trapiche","Norton","Luigi Bosca"]}, uco:{label:"Valle de Uco",lat:-33.67,lng:-69.17,desc:"The frontier. 1000–1500m altitude, rocky soils, extreme temperature swings. Argentina's most exciting terroir.",grapes:["Malbec","Cabernet Franc","Chardonnay"],producers:["Zuccardi","O.Fournier","Clos de los Siete"]}, san_rafael:{label:"San Rafael",lat:-34.62,lng:-68.33,desc:"Southern Mendoza at lower altitude. Warmer climate. Malbec with more immediate fruit charm.",grapes:["Malbec","Cabernet Sauvignon"],producers:["Jean Rivier","Suter","Bianchi"]} }
+        },
+        salta:{ label:"Salta — Cafayate", lat:-25.97, lng:-65.98, zoom:10, desc:"The world's highest commercial vineyards. Cafayate at 1,700m. Torrontés of extraordinary floral aromatics.", grapes:["Torrontés","Malbec","Cabernet Sauvignon","Tannat"], producers:["Colomé","El Esteco","Etchart","Piatelli"],
+          avas:{ cafayate_v:{label:"Cafayate Valley",lat:-26.07,lng:-65.97,desc:"Sandy soils, phylloxera-free. Torrontés is the signature — intensely aromatic.",grapes:["Torrontés","Malbec"],producers:["El Esteco","Etchart","Piatelli"]}, molinos:{label:"Molinos / Luracatao",lat:-25.48,lng:-66.33,desc:"Even higher altitude, 2,000–3,000m. Some of the world's highest vineyards.",grapes:["Malbec","Torrontés"],producers:["Colomé","Altura Máxima","Amalaya"]} }
+        }
+      }},
+      chile:{ label:"Chile", lat:-34, lng:-71, zoom:7, regions:{
+        maipo:{ label:"Maipo Valley", lat:-33.68, lng:-70.68, zoom:10, desc:"Chile's Bordeaux. The benchmark for Chilean Cabernet Sauvignon. Warm, dry, and Andean-influenced.", grapes:["Cabernet Sauvignon","Carmenère","Merlot","Syrah"], producers:["Almaviva","Don Melchor","Casa Real","Seña","Santa Rita"],
+          avas:{ alto_maipo:{label:"Alto Maipo",lat:-33.68,lng:-70.42,desc:"High up against the Andes. Gravel soils, altitude. Cabernet of elegance and finesse.",grapes:["Cabernet Sauvignon","Syrah"],producers:["Almaviva","Don Melchor","Haras de Pirque"]}, central_maipo:{label:"Central Maipo",lat:-33.72,lng:-70.88,desc:"Warm, flat valley floor. Generous, fruit-forward Cabernet at accessible prices.",grapes:["Cabernet Sauvignon","Carmenère","Merlot"],producers:["Santa Rita","Concha y Toro","Cousiño-Macul"]} }
+        },
+        casablanca:{ label:"Casablanca Valley", lat:-33.31, lng:-71.4, zoom:10, desc:"Chile's cool-climate revolution. Pacific fog creates ideal conditions for Sauvignon Blanc, Chardonnay, and Pinot Noir.", grapes:["Sauvignon Blanc","Chardonnay","Pinot Noir"], producers:["Viña Casablanca","Kingston Family","Concha y Toro"],
+          avas:{ upper_cas:{label:"Upper Casablanca",lat:-33.27,lng:-71.3,desc:"Higher elevation, less fog. More structured whites and increasingly serious Pinot Noir.",grapes:["Chardonnay","Pinot Noir"],producers:["Kingston Family","Matetic"]}, coastal_cas:{label:"Coastal Casablanca",lat:-33.35,lng:-71.55,desc:"Closest to the Pacific. Maximum fog, lowest temperatures. Zingy Sauvignon Blanc.",grapes:["Sauvignon Blanc","Pinot Noir"],producers:["Viña Casablanca","Indomita","Emiliana"]} }
+        },
+        colchagua:{ label:"Colchagua Valley", lat:-34.7, lng:-71.18, zoom:9, desc:"Chile's red wine powerhouse. Warm Mediterranean climate. Carmenère at its greatest.", grapes:["Carmenère","Cabernet Sauvignon","Syrah","Malbec"], producers:["Montes","Casa Lapostolle","Neyen","Clos Apalta"],
+          avas:{ apalta:{label:"Apalta",lat:-34.72,lng:-71.05,desc:"Chile's most celebrated sub-zone. Rocky slopes, old Carmenère and Cabernet vines. Clos Apalta is Chile's most coveted wine.",grapes:["Carmenère","Cabernet Sauvignon","Merlot"],producers:["Casa Lapostolle","Neyen","Montes Folly"]}, santa_cruz_c:{label:"Santa Cruz",lat:-34.65,lng:-71.37,desc:"Commercial heart of Colchagua. Full-bodied, accessible reds with immediate fruit appeal.",grapes:["Cabernet Sauvignon","Carmenère","Syrah"],producers:["Montes","Luis Felipe Edwards","MontGras"]} }
+        }
+      }},
+      uruguay:{ label:"Uruguay", lat:-32.8, lng:-56.2, zoom:8, regions:{
+        canelones:{ label:"Canelones", lat:-34.52, lng:-56.28, zoom:9, desc:"Uruguay's wine heartland. Atlantic-influenced. Tannat — brought by Basque immigrants — is the national grape.", grapes:["Tannat","Albariño","Pinot Noir","Cabernet Sauvignon"], producers:["Bouza","Bodegas Carrau","Familia Deicas","Pisano"],
+          avas:{ las_piedras:{label:"Las Piedras",lat:-34.48,lng:-56.22,desc:"Rocky granite soils. Tannat of great structure and aging potential.",grapes:["Tannat","Merlot"],producers:["Bouza","Marichal","Los Cerros de San Juan"]}, juanico:{label:"Juanicó",lat:-34.42,lng:-56.32,desc:"Home to Familia Deicas. Diverse soils — clay, sand, limestone.",grapes:["Tannat","Albariño","Pinot Noir"],producers:["Familia Deicas","Bodegas Carrau"]} }
+        }
+      }}
+    }
+  },
+
+  australasia:{ label:"Australasia", lat:-30, lng:140, zoom:4,
+    countries:{
+      australia:{ label:"Australia", lat:-34, lng:140, zoom:6, regions:{
+        barossa:{ label:"Barossa Valley", lat:-34.53, lng:138.95, zoom:10, desc:"Australia's most famous wine region. Shiraz heartland. Some of the world's oldest Grenache and Shiraz vines.", grapes:["Shiraz","Grenache","Cabernet Sauvignon","Riesling"], producers:["Penfolds","Henschke","Torbreck","Two Hands","Yalumba"],
+          avas:{ eden:{label:"Eden Valley",lat:-34.42,lng:138.98,desc:"High-altitude plateau above the Barossa. Riesling of finesse and Shiraz of elegance rather than power.",grapes:["Riesling","Shiraz"],producers:["Henschke (Hill of Grace)","Pewsey Vale","Yalumba"]}, marananga:{label:"Marananga",lat:-34.48,lng:138.88,desc:"Rich red heart of the Barossa. Ancient Shiraz and Grenache vines. Most concentrated expressions of Barossa red.",grapes:["Shiraz","Grenache","Mourvèdre"],producers:["Torbreck","Two Hands","Rockford","Spinifex"]}, nuriootpa:{label:"Nuriootpa",lat:-34.47,lng:139.0,desc:"Commercial center of the Barossa. Warm valley floor. Classic Barossa Shiraz richness. Home of Penfolds.",grapes:["Shiraz","Cabernet Sauvignon"],producers:["Penfolds","Langmeil","Seppeltsfield"]} }
+        },
+        mclaren:{ label:"McLaren Vale", lat:-35.22, lng:138.55, zoom:10, desc:"South of Adelaide. Mosaic of soils. Shiraz more savory and elegant than Barossa. Old vine Grenache is a revelation.", grapes:["Shiraz","Grenache","Cabernet Sauvignon"], producers:["d'Arenberg","Wirra Wirra","Coriole","Clarendon Hills"],
+          avas:{ blewitt:{label:"Blewitt Springs",lat:-35.27,lng:138.63,desc:"Deep sandy soils over ironstone. Grenache of extraordinary purity and delicacy.",grapes:["Grenache","Shiraz"],producers:["Bekkers","Samuel's Gorge","Alpha Box & Dice"]}, clarendon_r:{label:"Clarendon",lat:-35.12,lng:138.63,desc:"High-altitude, cooler zone. Shiraz of notable density and age-worthiness.",grapes:["Shiraz","Grenache"],producers:["Clarendon Hills","Farmer's Leap"]} }
+        },
+        yarra:{ label:"Yarra Valley", lat:-37.72, lng:145.53, zoom:10, desc:"Victoria's cool-climate jewel east of Melbourne. Pinot Noir and Chardonnay of real elegance.", grapes:["Pinot Noir","Chardonnay","Shiraz","Cabernet Sauvignon"], producers:["Yering Station","De Bortoli","Mount Mary","Punt Road","Coldstream Hills"],
+          avas:{ upper_yarra:{label:"Upper Yarra Valley",lat:-37.77,lng:145.68,desc:"Coolest, highest sub-zone. Fragrant, ethereal Pinot Noir and mineral Chardonnay.",grapes:["Pinot Noir","Chardonnay"],producers:["Seville Estate","Warramate","Wantirna Estate"]}, lower_yarra:{label:"Lower Yarra Valley",lat:-37.65,lng:145.35,desc:"Slightly warmer valley floor. Fuller-bodied Pinot Noir, Chardonnay, and Yarra Shiraz.",grapes:["Pinot Noir","Chardonnay","Shiraz"],producers:["De Bortoli","Coldstream Hills","Giant Steps"]} }
+        },
+        coonawarra:{ label:"Coonawarra", lat:-37.28, lng:140.82, zoom:11, desc:"Famous terra rossa over limestone. The benchmark for Australian Cabernet Sauvignon — minty, leafy, age-worthy.", grapes:["Cabernet Sauvignon","Shiraz","Merlot"], producers:["Wynns","Balnaves","Majella","Parker Coonawarra","Penley"],
+          avas:{ terra_rossa:{label:"Terra Rossa Strip",lat:-37.28,lng:140.82,desc:"The famous red-over-limestone soil strip. Free-draining terra rossa gives Cabernet its distinctive minty, structured character.",grapes:["Cabernet Sauvignon"],producers:["Wynns John Riddoch","Balnaves Tally","Parker First Growth"]} }
+        }
+      }},
+      new_zealand:{ label:"New Zealand", lat:-42, lng:172, zoom:6, regions:{
+        marlborough:{ label:"Marlborough", lat:-41.51, lng:173.96, zoom:9, desc:"Top of New Zealand's South Island. Sauvignon Blanc of global fame — electric acidity and vivid tropical fruit.", grapes:["Sauvignon Blanc","Pinot Noir","Pinot Gris","Chardonnay"], producers:["Cloudy Bay","Dog Point","Greywacke","Fromm","Seresin"],
+          avas:{ wairau:{label:"Wairau Valley",lat:-41.52,lng:173.82,desc:"Flat alluvial valley floor. Ripe, tropical-style Sauvignon Blanc. Commercial heart of Marlborough.",grapes:["Sauvignon Blanc","Pinot Gris"],producers:["Cloudy Bay","Villa Maria","Brancott","Kim Crawford"]}, awatere:{label:"Awatere Valley",lat:-41.65,lng:174.2,desc:"Drier, windier, cooler. More structured, herbaceous Sauvignon Blanc with intense mineral character.",grapes:["Sauvignon Blanc","Pinot Noir"],producers:["Vavasour","Yealands","Greywacke","Dog Point"]}, southern_v:{label:"Southern Valleys",lat:-41.62,lng:173.7,desc:"Sheltered clay-rich sub-valleys. Richer Sauvignon Blanc and serious Pinot Noir with earthy depth.",grapes:["Sauvignon Blanc","Pinot Noir"],producers:["Seresin","Fromm","Churton","Clos Henri"]} }
+        },
+        central_otago:{ label:"Central Otago", lat:-45.02, lng:169.32, zoom:9, desc:"World's southernmost significant wine region. Continental climate. New Zealand's finest Pinot Noir.", grapes:["Pinot Noir","Pinot Gris","Riesling","Chardonnay"], producers:["Felton Road","Mt Difficulty","Two Paddocks","Rippon"],
+          avas:{ bannockburn:{label:"Bannockburn",lat:-45.03,lng:169.22,desc:"Warmest, most sheltered sub-region. Schist soils. Pinot Noir of great concentration and dark fruit. Felton Road's home.",grapes:["Pinot Noir","Chardonnay"],producers:["Felton Road","Valli","Carrick","Bald Hills"]}, gibbston:{label:"Gibbston Valley",lat:-44.96,lng:168.93,desc:"Coolest sub-region. More elegant, perfumed Pinot Noir with red cherry and floral character.",grapes:["Pinot Noir","Riesling"],producers:["Gibbston Valley Wines","Mt Rosa","Chard Farm","Peregrine"]}, wanaka:{label:"Lake Wanaka",lat:-44.7,lng:169.13,desc:"Lake moderates temperatures. Rippon Vineyard is the most photographed in New Zealand.",grapes:["Pinot Noir","Riesling"],producers:["Rippon","Mount Maude","Wanaka Wines"]} }
+        },
+        hawkes_bay:{ label:"Hawke's Bay", lat:-39.6, lng:176.9, zoom:9, desc:"New Zealand's second-largest region, North Island. Gimblett Gravels produces Bordeaux-style reds of real complexity.", grapes:["Cabernet Sauvignon","Merlot","Syrah","Chardonnay"], producers:["Craggy Range","Te Mata","Trinity Hill","Villa Maria"],
+          avas:{ gimblett:{label:"Gimblett Gravels",lat:-39.6,lng:176.78,desc:"Free-draining shingle on old riverbed. New Zealand's only serious address for Cabernet Sauvignon and Syrah.",grapes:["Cabernet Sauvignon","Merlot","Syrah"],producers:["Craggy Range","Trinity Hill","Ngatarawa","Stonecroft"]}, bridge_pa:{label:"Bridge Pa Triangle",lat:-39.68,lng:176.88,desc:"Loamy alluvial soils. Aromatic whites — Gewürztraminer, Viognier, Albariño thrive here.",grapes:["Syrah","Viognier","Gewürztraminer"],producers:["Alpha Domus","Te Mata","Sacred Hill"]} }
+        }
+      }},
+      south_africa:{ label:"South Africa", lat:-33.9, lng:18.9, zoom:8, regions:{
+        stellenbosch:{ label:"Stellenbosch", lat:-33.93, lng:18.86, zoom:10, desc:"Heart of South African fine wine. Mountain-backed valleys. Cabernet Sauvignon and Chenin Blanc are the stars.", grapes:["Cabernet Sauvignon","Pinotage","Chenin Blanc","Syrah"], producers:["Kanonkop","Meerlust","Rustenberg","Tokara","Waterford"],
+          avas:{ simonsberg:{label:"Simonsberg",lat:-33.85,lng:18.93,desc:"Granite and sandstone slopes. Cabernet Sauvignon of great structure and longevity.",grapes:["Cabernet Sauvignon","Merlot","Pinotage"],producers:["Kanonkop","Rustenberg","Thelema","Delaire Graff"]}, helderberg:{label:"Helderberg",lat:-34.03,lng:18.88,desc:"Marine-influenced, near False Bay. Cool breezes allow for elegant Cabernet and Syrah.",grapes:["Cabernet Sauvignon","Syrah","Merlot"],producers:["Meerlust","Vergelegen","Waterford","De Toren"]} }
+        },
+        swartland:{ label:"Swartland", lat:-33.43, lng:18.67, zoom:10, desc:"South Africa's wine revolution epicenter. Old bush-vine Chenin Blanc and Syrah on granite, schist, and shale soils.", grapes:["Chenin Blanc","Syrah","Grenache","Cinsault","Mourvèdre"], producers:["Eben Sadie","Mullineux","Lammershoek","Intellego"],
+          avas:{ paardeberg:{label:"Paardeberg",lat:-33.45,lng:18.82,desc:"Granite domes. Extraordinary mineral definition in Chenin Blanc and Syrah. Sadie Family's home base.",grapes:["Chenin Blanc","Syrah","Grenache"],producers:["Sadie Family","Mullineux","Lammershoek"]}, malmesbury:{label:"Malmesbury",lat:-33.46,lng:18.72,desc:"Commercial center of Swartland. Diverse soils. Fine old-vine Cinsault increasingly recognized.",grapes:["Chenin Blanc","Syrah","Cinsault"],producers:["Porseleinberg","AA Badenhorst","Intellego"]} }
+        }
+      }}
+    }
+  }
+};
+
+// ════════════════════════════════════════════
+// MAP STATE & ENGINE
+// ════════════════════════════════════════════
+let MST = { continent:null, country:null, region:null };
+let leafMap, mMarkers = [];
+
+function initMap() {
+  leafMap = L.map('map', { zoomControl:true, scrollWheelZoom:true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>', maxZoom:13
+  }).addTo(leafMap);
+  leafMap.setView([30,10], 2);
+}
+
+function mClearMarkers() { mMarkers.forEach(m=>leafMap.removeLayer(m)); mMarkers=[]; }
+
+function mMakeMarker(lat, lng, label, isGold, onClick) {
+  const icon = L.divIcon({ className:'', iconSize:[14,14], iconAnchor:[7,7], html:`<div class="wine-dot${isGold?' gold':''}"></div>` });
+  const m = L.marker([lat,lng],{icon}).addTo(leafMap);
+  m.bindTooltip(`<strong style="font-family:var(--font-display)">${label}</strong>`, {direction:'top',offset:[0,-8]});
+  m.on('click', onClick);
+  mMarkers.push(m);
+  return m;
+}
+
+function mapSelectContinent(id) {
+  MST = {continent:id, country:null, region:null};
+  document.getElementById('continent-overlay').style.display='none';
+  mapCloseDetail();
+  const c = MDATA[id];
+  leafMap.flyTo([c.lat,c.lng], c.zoom, {duration:1.2});
+  mClearMarkers();
+  Object.entries(c.countries).forEach(([cid,country]) => mMakeMarker(country.lat, country.lng, country.label, false, ()=>mapSelectCountry(cid)));
+  mRenderList(); mUpdateBreadcrumb(); mUpdateTitle();
+}
+
+function mapSelectCountry(cid) {
+  MST.country=cid; MST.region=null;
+  mapCloseDetail();
+  const country = MDATA[MST.continent].countries[cid];
+  leafMap.flyTo([country.lat,country.lng], country.zoom, {duration:1.0});
+  mClearMarkers();
+  Object.entries(country.regions).forEach(([rid,region]) => mMakeMarker(region.lat, region.lng, region.label, false, ()=>mapSelectRegion(rid)));
+  mRenderList(); mUpdateBreadcrumb(); mUpdateTitle();
+}
+
+function mapSelectRegion(rid) {
+  MST.region=rid;
+  const country = MDATA[MST.continent].countries[MST.country];
+  const region = country.regions[rid];
+  leafMap.flyTo([region.lat,region.lng], region.zoom, {duration:0.9});
+  mClearMarkers();
+  Object.entries(region.avas).forEach(([aid,ava]) => mMakeMarker(ava.lat, ava.lng, ava.label, true, ()=>mapSelectAVA(aid)));
+  mapShowDetail(region.label, `${country.label} · ${MDATA[MST.continent].label}`, region.desc, region.grapes, region.producers);
+  mRenderList(); mUpdateBreadcrumb(); mUpdateTitle();
+}
+
+function mapSelectAVA(aid) {
+  const region = MDATA[MST.continent].countries[MST.country].regions[MST.region];
+  const country = MDATA[MST.continent].countries[MST.country];
+  const ava = region.avas[aid];
+  leafMap.flyTo([ava.lat,ava.lng], 11, {duration:0.8});
+  mapShowDetail(ava.label, `${region.label} · ${country.label}`, ava.desc, ava.grapes, ava.producers);
+  document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
+  const el = document.querySelector(`[data-avaid="${aid}"]`);
+  if(el){el.classList.add('active');el.scrollIntoView({block:'nearest'});}
+  mUpdateBreadcrumb(); mUpdateTitle();
+}
+
+function mapShowDetail(name, meta, desc, grapes, producers) {
+  document.getElementById('d-name').textContent=name;
+  document.getElementById('d-meta').textContent=meta;
+  document.getElementById('d-desc').textContent=desc;
+  document.getElementById('d-grapes').innerHTML=(grapes||[]).map(g=>`<span class="dtag">${g}</span>`).join('');
+  document.getElementById('d-producers').innerHTML=(producers||[]).map(p=>`<div class="producer-item">· ${p}</div>`).join('');
+  document.getElementById('map-detail').classList.add('open');
+}
+
+function mapCloseDetail() { document.getElementById('map-detail').classList.remove('open'); }
+
+function mRenderList() {
+  const scroll = document.getElementById('map-list-scroll');
+  scroll.innerHTML='';
+  const cont = MDATA[MST.continent];
+  if (!MST.country) {
+    Object.entries(cont.countries).forEach(([cid,c]) => scroll.appendChild(mLI(c.label,`${Object.keys(c.regions).length} regions`,true,()=>mapSelectCountry(cid))));
+  } else if (!MST.region) {
+    const country=cont.countries[MST.country];
+    Object.entries(country.regions).forEach(([rid,r]) => scroll.appendChild(mLI(r.label,`${Object.keys(r.avas).length} sub-regions / AVAs`,true,()=>mapSelectRegion(rid))));
+  } else {
+    const region=cont.countries[MST.country].regions[MST.region];
+    Object.entries(region.avas).forEach(([aid,a]) => {
+      const el=mLI(a.label,(a.grapes||[]).slice(0,2).join(', '),false,()=>mapSelectAVA(aid));
+      el.setAttribute('data-avaid',aid); scroll.appendChild(el);
+    });
+  }
+}
+
+function mLI(name,sub,arrow,onclick) {
+  const d=document.createElement('div'); d.className='map-list-item anim';
+  d.innerHTML=`<div><div class="map-list-name">${name}</div>${sub?`<div class="map-list-sub">${sub}</div>`:''}</div>${arrow?'<span class="map-list-arrow">›</span>':''}`;
+  d.addEventListener('click',onclick); return d;
+}
+
+function mUpdateBreadcrumb() {
+  const bc=document.getElementById('map-breadcrumb'); bc.innerHTML='';
+  const add=(label,action)=>{
+    const s=document.createElement('span'); s.className=action?'bc-item':'bc-current'; s.textContent=label;
+    if(action) s.addEventListener('click',action); bc.appendChild(s);
+  };
+  const sep=()=>{const s=document.createElement('span');s.className='bc-sep';s.textContent=' › ';bc.appendChild(s);};
+  add('World',()=>mapGoWorld());
+  if(MST.continent){sep();const label=MDATA[MST.continent].label;add(label,MST.country?()=>{MST.country=null;MST.region=null;mapCloseDetail();mapSelectContinent(MST.continent);}:null);}
+  if(MST.country){sep();const label=MDATA[MST.continent].countries[MST.country].label;add(label,MST.region?()=>{MST.region=null;mapCloseDetail();mapSelectCountry(MST.country);}:null);}
+  if(MST.region){sep();add(MDATA[MST.continent].countries[MST.country].regions[MST.region].label,null);}
+}
+
+function mUpdateTitle() {
+  const el=document.getElementById('map-panel-title');
+  if(MST.region) el.textContent=MDATA[MST.continent].countries[MST.country].regions[MST.region].label;
+  else if(MST.country) el.textContent=MDATA[MST.continent].countries[MST.country].label;
+  else if(MST.continent) el.textContent=MDATA[MST.continent].label;
+  else el.textContent='Select a Region';
+}
+
+function mapGoWorld() {
+  MST={continent:null,country:null,region:null};
+  mapCloseDetail(); mClearMarkers();
+  leafMap.flyTo([30,10],2,{duration:1.5});
+  document.getElementById('continent-overlay').style.display='flex';
+  document.getElementById('map-list-scroll').innerHTML='';
+  document.getElementById('map-panel-title').textContent='Select a Region';
+  mUpdateBreadcrumb();
+}
+
+function mapFilterList(q) {
+  document.querySelectorAll('.map-list-item').forEach(el=>{
+    el.style.display=el.querySelector('.map-list-name').textContent.toLowerCase().includes(q.toLowerCase())?'flex':'none';
+  });
+}
+</script>
+</body>
+</html>
