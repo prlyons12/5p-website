@@ -700,11 +700,9 @@ let MST = { continent:null, country:null, region:null };
 let leafMap, mMarkers = [];
 
 function initMap() {
-  leafMap = L.map('map', { zoomControl:true, scrollWheelZoom:true });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>', maxZoom:13
-  }).addTo(leafMap);
-  leafMap.setView([30,10], 2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+}).addTo(map);
 }
 
 function mClearMarkers() { mMarkers.forEach(m=>leafMap.removeLayer(m)); mMarkers=[]; }
