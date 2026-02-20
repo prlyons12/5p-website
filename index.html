@@ -812,26 +812,62 @@ function mLI(name,sub,arrow,onclick) {
 }
 
 function mUpdateBreadcrumb() {
-  const bc=document.getElementById('map-breadcrumb'); bc.innerHTML='';
-  const add=(label,action)=>{
-    const s=document.createElement('span'); s.className=action?'bc-item':'bc-current'; s.textContent=label;
-    if(action) s.addEventListener('click',action); bc.appendChild(s);
+  const bc = document.getElementById('map-breadcrumb'); 
+  bc.innerHTML = '';
+  
+  const add = (label, action) => {
+    const s = document.createElement('span');
+    s.className = action ? 'bc-item' : 'bc-current';
+    s.textContent = label;
+    if (action) s.addEventListener('click', action);
+    bc.appendChild(s);
   };
-  const sep=()=>{const s=document.createElement('span');s.className='bc-sep';s.textContent=' › ';bc.appendChild(s);};
-  add('World',()=>mapGoWorld());
-  if(MST.continent){sep();const label=MDATA[MST.continent].label;add(label,MST.country?()=>{MST.country=null;MST.region=null;mapCloseDetail();mapSelectContinent(MST.continent);}:null);}
-  if(MST.country){sep();const label=MDATA[MST.continent].countries[MST.country].label;add(label,MST.region?()=>{MST.region=null;mapCloseDetail();mapSelectCountry(MST.country);}:null);}
-  if(MST.region){sep();add(MDATA[MST.continent].countries[MST.country].regions[MST.region].label,null);}
+
+  const sep = () => {
+    const s = document.createElement('span');
+    s.className = 'bc-sep';
+    s.textContent = ' › ';
+    bc.appendChild(s);
+  };
+
+  add('World', () => mapGoWorld());
+
+  if (MST.continent && MDATA[MST.continent]) {
+    sep();
+    const contData = MDATA[MST.continent];
+    add(contData.label, MST.country ? () => { 
+      MST.country = null; 
+      MST.region = null; 
+      mapSelectContinent(MST.continent); 
+    } : null);
+
+    if (MST.country && contData.countries[MST.country]) {
+      sep();
+      const countryData = contData.countries[MST.country];
+      add(countryData.label, MST.region ? () => { 
+        MST.region = null; 
+        mapSelectCountry(MST.country); 
+      } : null);
+
+      if (MST.region && countryData.regions[MST.region]) {
+        sep();
+        add(countryData.regions[MST.region].label, null);
+      }
+    }
+  }
 }
 
 function mUpdateTitle() {
-  const el=document.getElementById('map-panel-title');
-  if(MST.region) el.textContent=MDATA[MST.continent].countries[MST.country].regions[MST.region].label;
-  else if(MST.country) el.textContent=MDATA[MST.continent].countries[MST.country].label;
-  else if(MST.continent) el.textContent=MDATA[MST.continent].label;
-  else el.textContent='Select a Region';
+  const el = document.getElementById('map-panel-title');
+  try {
+    if (MST.region) el.textContent = MDATA[MST.continent].countries[MST.country].regions[MST.region].label;
+    else if (MST.country) el.textContent = MDATA[MST.continent].countries[MST.country].label;
+    else if (MST.continent) el.textContent = MDATA[MST.continent].label;
+    else el.textContent = 'Select a Region';
+  } catch (e) {
+    el.textContent = 'Select a Region';
+  }
 }
-
 function mapGoWorld() {
   MST={continent:null,country:null,region:null};
   mapCloseDetail(); mClearMarkers();
